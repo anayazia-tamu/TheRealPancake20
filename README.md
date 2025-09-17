@@ -1,3 +1,2 @@
-https://prod.liveshare.vsengsaas.visualstudio.com/join?31EF446768E96AF3353CEC7A5801B23EB5C3 
-https://prod.liveshare.vsengsaas.visualstudio.com/join?60F612950E816865FE249D2C724F17A3D148 
+https://prod.liveshare.vsengsaas.visualstudio.com/join?A9ED5D2DBFC5185D1D4038B698427D4A9B15
 https://www.nhlbi.nih.gov/sites/default/files/publications/05-3290.pdf
