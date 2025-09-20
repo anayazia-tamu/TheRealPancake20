@@ -129,3 +129,5 @@ sex:F age:60 cho:210 smo:N hdl:30 sbp:160 med:N out:6
 sex:F age:65 cho:210 smo:N hdl:30 sbp:160 med:N out:11
 sex:F age:70 cho:210 smo:N hdl:30 sbp:160 med:N out:14
 sex:F age:75 cho:210 smo:N hdl:30 sbp:160 med:N out:22
+
+sex:F age:25 cho:290 smo:Y hdl:50 sbp:110 med:N out:3
