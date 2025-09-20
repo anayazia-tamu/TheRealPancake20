@@ -7,7 +7,8 @@ https://1drv.ms/u/c/64f8e279d6cccc52/ES4lAJK-54BMmK0_Y7NvOw8B9lmEA8agLUony6Tsvz9
 
 IM LOSING MY MIND:
 ALL CORRECT CASES (87% ACCURACY) 
-RAHHHHHHH: 
+RAHHHHHHH
+ANAYA IS THE GOAT: 
 
 sex:M age:21 cho:155 smo:N hdl:60 sbp:100 med:N out:<1
 sex:M age:35 cho:160 smo:Y hdl:50 sbp:120 med:Y out:5
