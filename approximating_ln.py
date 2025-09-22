@@ -21,7 +21,7 @@ val = x - 1
 n = 2
 next = (((x-1) ** n) / n) * (-1, 1)[n%2]
 while (abs(next)>tol):
-    print(val)
+    #print(val)
     val += next
     n += 1
     next = (((x-1) ** n) / n) * (-1, 1)[n%2]
