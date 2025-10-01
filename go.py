@@ -12,7 +12,7 @@
 # Date: 29 September 2025
 
 
-board = [[' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']]
+board = [[' ', 'Z', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']]
 
 for y in range(1, 10):
     row = []
