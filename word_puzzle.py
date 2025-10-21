@@ -9,7 +9,7 @@ def print_puzzle(puzzle):
             print(f"{'-'*len(puzzle[i]): >16}")
             
 def make_number(word, guess):
-    number = num1+ num2
+    number = num1 + num2
     return int(number)
 
 def make_numbers(num1, num2):
