@@ -54,6 +54,7 @@ def main():
     
     # The lines below demonstrate what the print_puzzle function outputs.
     #puzzle_input = "RUE,EAR | RUMORS,UEII  ,UKTR ,EAR ,KEOS,KAIK,USA"
+    # [FAIL] Puzzle: SAG,SOW | GLOSSY,NSAS  ,EGLS ,EOGT ,OTYY,OSSO,OEA, Guess: Invalid guess
     print()
     print_puzzle(puzzle_input)
     print()
