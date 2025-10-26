@@ -67,16 +67,20 @@ def main():
     print_puzzle(puzzle_input)
     print()
     guess_input = input("Enter your guess, for example ABCDEFGHIJ: ")
-    if(len(guess_input) != 10):
-        print("Your guess should contain exactly 10 unique letters used in the puzzle.")
+    if is_valid_guess(get_valid_letters(puzzle_input), guess_input) and (len(guess_input) != 10):
+        guessnum = make_numbers(puzzle_input, guess_input)
+        if check_user_guess(guessnum[0], guessnum[1], guessnum[2], guessnum[3]):
+            print("Good job!")
+        else:
+            print("Try again!")
     elif is_valid_guess(get_valid_letters(puzzle_input), guess_input):
         guessnum = make_numbers(puzzle_input, guess_input)
         if check_user_guess(guessnum[0], guessnum[1], guessnum[2], guessnum[3]):
             print("Good job!")
         else:
-            print("Try again!)
+            print("Try again!")
     else:
-        print("Try again!")
+        print("Your guess should contain exactly 10 unique letters used in the puzzle.")
     
 
 if __name__ == '__main__':
