@@ -42,7 +42,14 @@ def get_valid_letters(s):
     return "".join(set(i for i in s if i not in ",| "))
 
 def is_valid_guess(b1, b2) -> bool:
-    x = (all(i in b1 for i in b2) and len(set(i for i in b2)) == 10)
+    for num in b1:
+        count = 0
+        for num2 in b2:
+            if num == num2:
+                count += 1
+        if count > 1:
+            break
+    x = len(set(i for i in b2)) == 10) and count == 1
     return x
 
 
