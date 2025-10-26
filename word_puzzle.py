@@ -72,7 +72,7 @@ def main():
     elif is_valid_guess(get_valid_letters(puzzle_input), guess_input):
         guessnum = make_numbers(puzzle_input, guess_input)
         if check_user_guess(guessnum[0], guessnum[1], guessnum[2], guessnum[3]):
-            print("Good Job!")
+            print("Good job!")
         else:
             print("Try again!)
     else:
