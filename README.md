@@ -1,1 +1,1 @@
-https://prod.liveshare.vsengsaas.visualstudio.com/join?B69B4DEF3D79D26AFCB2BFA356700C44FE0F
+https://prod.liveshare.vsengsaas.visualstudio.com/join?8918A21FA1349D1E4918BD400255FA98E490
