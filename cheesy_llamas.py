@@ -1,5 +1,6 @@
 # Program that takes arbitrary x, y data pairs, then calculates linear interpolation / extrapolation for any x
-
+f = open("nailed_it.txt", "w")
+  
 def get_user_data():
     """ Parameters: (none)
         Function asks user to type in an x then a corresponding y. If user types 'q', it exits. The values are added
@@ -22,9 +23,14 @@ def write_input(x_list, y_list, v):
         Function writes into nailedit.txt file the values, formatted as required in problem statement. """
 
     # ---- WRITE HEADER AND X-Y VALUES TO EXTERNAL FILE ----
-    pass # <-- replace this with your code
-
-
+    
+    f.write("---------------------------------------------------------------\nPancake20\nwith Valen Amarasingham, Sabin Salazar, Devsashank Mugundhan, Anaya Zia\nOctober 31, 2025\n")
+    f.write(f"x-values = time, y-values = {v}\n")
+    f.write("---------------------------------------------------------------\n")
+    for i in range(len(x_list)):
+        f.write(f"{int(x_list[i])}, {int(y_list[i])}\n")
+    f.write("---------------------------------------------------------------\n")
+    
 
 def reorder_lists(x_list, y_list):
     """ parameters: x_list (list, contains x-values), y_list (list, contains y-values).
@@ -81,8 +87,12 @@ def print_to_file(x, y, t):
         Function writes to file the x, corresponding y, and whether it was interpolated or extrapolated.
         return: (none) """
 
+    
     # ---- WRITE X-Y VALUES AND ESTIMATION TYPE TO EXTERNAL FILE ----
-    pass # <-- replace this with your code
+    
+    f.write(f"{f"{int(x)}, {y:.1f}":<15} {t}\n")
+
+
 
 
 #########################################################################
@@ -118,3 +128,5 @@ while x_val != 'q':
 
 # ---- Be polite
 print('Have a great day!')
+
+
