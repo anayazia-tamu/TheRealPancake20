@@ -30,30 +30,53 @@ passw = valid_pass[0]
     valid = iyr <= 2025 and iyr >= 2015 and valid    
     if not valid:
         print("iyr")
+        continue
     eyr = int(passw[passw.index("eyr")+4: passw.index("eyr")+9])
     valid = eyr <= 2035 and eyr >= 2025 and valid
     if not valid:
         print("eyr")
-    hgt = int(passw[passw.index("hgt")+4: passw.index("hgt")+5] if (passw[passw.index("hgt")+5] == "i") else passw[passw.index("hgt")+4: passw.index("hgt")+6])
-    valid = ((hgt>=59 and hgt <=76) or (hgt >=150 and hgt <= 193)) and valid
+        continue
+    # old code if we want to put it back
+    #hgt = int(passw[passw.index("hgt")+4: passw.index("hgt")+5] if (passw[passw.index("hgt")+5] == "i") else passw[passw.index("hgt")+4: passw.index("hgt")+6])
+    #valid = ((hgt>=59 and hgt <=76) or (hgt >=150 and hgt <= 193)) and valid
+    prelim_hgt = passw[passw.index("hgt"):]
+    if "in" in prelim_hgt:
+        hgt = int(passw[passw.index("hgt")+4: passw.index("hgt")+6])
+        valid = ((hgt>=59 and hgt <=76)) and valid
+    elif "cm" in prelim_hgt:
+        hgt = int(passw[passw.index("hgt")+4: passw.index("hgt")+7])
+        valid = (hgt >=150 and hgt <= 193) and valid
+    else:
+        valid = False
     if not valid:
         print("hgt")
+        continue
     hcl = passw[passw.index("hcl")+4: passw.index("hcl")+11]
     valid = re.match(r"^#\w{6}$", hcl) and valid
     if not valid:
         print("hcl")
+        continue
     ecl = passw[passw.index("ecl")+4: passw.index("ecl")+7]
     valid = ecl in eyes and valid
     if not valid:
         print("ecl")
+        continue
     pid = passw[passw.index("pid")+4: -1]
-    valid = (len(pid) == 9) and valid
+    pid_cont=""
+    for num in pid:
+        try:
+            pid_cont += str(int(num))
+        except:
+            break
+    valid = (len(pid_cont) == 9) and valid
     if not valid:
         print("pid")
+        continue
     cid = int(passw[passw.index("cid")+4: passw.index("cid")+8])
     valid = cid > 99 and cid < 1000 and  valid
     if not valid:
         print("cid")
+        continue
     
     if valid:
         r.write(f"{passw}\n\n")
