@@ -1,0 +1,37 @@
+# By submitting this assignment, I agree to the following:
+# "Aggies do not lie, cheat, or steal, or tolerate those who do"
+# "I have not given or received any unauthorized aid on this assignment."
+#
+# Names: 
+# Sabin Salazar
+# Section: 505
+# Assignment: Lab 11.15
+# Date: 9 November 2025
+
+#file = input("Enter the name of the file: ")
+file = "barcodes.txt"
+f = open(file, "r")
+r = open("valid_barcodes.txt", "w")
+#barcodes = [line for line in f.read().split("\n")]
+barcodes = f.read().split("\n")
+#print(barcodes)
+tot_bar = []
+def valid(number):
+    dupe = number[:-1]
+    # print(number)
+    # print(dupe)
+    
+    
+    evensin = sum([int(dig) for dig in dupe[::2]])
+    oddsin = sum([int(dig) for dig in dupe[1::2]])
+    #print([int(dig) for dig in number[::2]], [int(dig) for dig in number[1::2]])
+    oddsin *= 3
+    total = evensin + oddsin
+    target = 10 - int(str(total)[-1])
+    if int(number[-1]) == target:
+        r.write(f"{number}\n")
+        tot_bar.append(number)
+    
+for num in barcodes:
+    valid(num)
+print(f"There are {len(tot_bar)} valid barcodes")
