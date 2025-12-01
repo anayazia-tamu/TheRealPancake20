@@ -5,6 +5,7 @@ Handles game loop and event processing
 
 import pygame
 import random
+import os
 from game_state import GameState
 from renderer import GameRenderer
 
@@ -21,8 +22,11 @@ class TroubleGame:
         self.game_state = GameState()
         self.renderer = GameRenderer(self.screen)
 
-        self.setup_mode = True
+        self.main_menu_mode = True
+        self.setup_mode = False
         self.waiting_for_peg_selection = False
+        self.viewing_results = False
+        self.results_data = []
 
     def run(self):
         """Main game loop"""
@@ -62,10 +66,68 @@ class TroubleGame:
 
     def handle_events(self, mouse_pos):
         """Handle mouse click events"""
-        if self.setup_mode:
+        if self.main_menu_mode:
+            self.handle_main_menu_click(mouse_pos)
+        elif self.viewing_results:
+            self.handle_results_click(mouse_pos)
+        elif self.setup_mode:
             self.handle_setup_click(mouse_pos)
         else:
             self.handle_game_click(mouse_pos)
+
+    def handle_main_menu_click(self, mouse_pos):
+        """Handle clicks on the main menu"""
+        mouse_x, mouse_y = mouse_pos
+        
+        # Play Game button (centered at y=400)
+        play_button_rect = pygame.Rect(450, 350, 300, 80)
+        if play_button_rect.collidepoint(mouse_x, mouse_y):
+            self.main_menu_mode = False
+            self.setup_mode = True
+            return
+        
+        # View Results button (centered at y=520)
+        results_button_rect = pygame.Rect(450, 470, 300, 80)
+        if results_button_rect.collidepoint(mouse_x, mouse_y):
+            # Check if results directory exists
+            if os.path.exists("game_results"):
+                self.load_results()
+                self.main_menu_mode = False
+                self.viewing_results = True
+            return
+    
+    def handle_results_click(self, mouse_pos):
+        """Handle clicks on the results screen"""
+        mouse_x, mouse_y = mouse_pos
+        
+        # Back button
+        back_button_rect = pygame.Rect(450, 750, 300, 60)
+        if back_button_rect.collidepoint(mouse_x, mouse_y):
+            self.viewing_results = False
+            self.main_menu_mode = True
+            return
+    
+    def load_results(self):
+        """Load all game results from the game_results directory"""
+        self.results_data = []
+        results_dir = "game_results"
+        
+        if not os.path.exists(results_dir):
+            return
+        
+        # Get all result files
+        files = [f for f in os.listdir(results_dir) if f.endswith('.txt')]
+        files.sort(reverse=True)  # Most recent first
+        
+        # Load up to 10 most recent games
+        for filename in files[:10]:
+            filepath = os.path.join(results_dir, filename)
+            try:
+                with open(filepath, 'r') as f:
+                    content = f.read()
+                    self.results_data.append(content)
+            except Exception as e:
+                print(f"Error loading {filename}: {e}")
 
     def handle_setup_click(self, mouse_pos):
         """Handle clicks during game setup"""
@@ -90,8 +152,14 @@ class TroubleGame:
 
     def handle_game_click(self, mouse_pos):
         """Handle clicks during gameplay"""
-        # Don't allow clicks if game is over
+        # Check if game is over and menu button was clicked
         if self.game_state.game_over:
+            if self.renderer.is_menu_button_clicked(mouse_pos):
+                # Reset to main menu
+                self.main_menu_mode = True
+                self.setup_mode = False
+                self.waiting_for_peg_selection = False
+                self.game_state = GameState()  # Create fresh game state
             return
 
         # Check if dice button was clicked
@@ -219,12 +287,18 @@ class TroubleGame:
     def render(self):
         """Render the current game state"""
         mouse_pos = pygame.mouse.get_pos()
-        self.renderer.render_all(self.game_state, self.setup_mode, mouse_pos)
+        
+        if self.main_menu_mode:
+            self.renderer.render_main_menu(mouse_pos)
+        elif self.viewing_results:
+            self.renderer.render_results_screen(self.results_data, mouse_pos)
+        else:
+            self.renderer.render_all(self.game_state, self.setup_mode, mouse_pos)
 
-        # Highlight valid pegs if waiting for selection
-        if self.waiting_for_peg_selection and self.game_state.current_roll is not None:
-            valid_pegs = self.game_state.get_valid_pegs(self.game_state.current_roll)
-            self.renderer.highlight_pegs(valid_pegs)
+            # Highlight valid pegs if waiting for selection
+            if self.waiting_for_peg_selection and self.game_state.current_roll is not None:
+                valid_pegs = self.game_state.get_valid_pegs(self.game_state.current_roll)
+                self.renderer.highlight_pegs(valid_pegs)
 
 
 def main():
