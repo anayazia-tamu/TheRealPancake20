@@ -301,17 +301,17 @@ class GameRenderer:
             "YELLOW": (-1, 0),
         }
 
-        if peg.position == -1:
+        if peg.is_in_home:
             # Position in home base (2x2 grid)
             base_x, base_y = home_positions[peg.owner.color]
-            pegs_in_home = [p for p in peg.owner.pegs if p.position == -1]
+            pegs_in_home = peg.owner.get_pegs_in_home()
             index = pegs_in_home.index(peg) if peg in pegs_in_home else 0
 
             x = base_x - 30 + (index % 2) * 60
             y = base_y - 30 + (index // 2) * 60
             return (x, y)
 
-        elif peg.position >= 100:
+        elif peg.is_in_finish:
             # Position in finish zone
             start_x, start_y = finish_positions[peg.owner.color]
             dx, dy = finish_directions[peg.owner.color]
@@ -406,14 +406,16 @@ class GameRenderer:
         """Get screen coordinate for a logical position"""
         # Temporarily set peg position to get coordinate, then restore
         old_pos = peg.position
-        old_home = peg.position == -1   
-        old_finish = peg.position >= 100
+        old_home = peg.is_in_home
+        old_finish = peg.is_in_finish
         
-        peg.position = pos
+        peg.move_to(pos)
         coord = self.get_peg_screen_position(peg)
         
         # Restore
         peg.position = old_pos
+        peg.is_in_home = old_home
+        peg.is_in_finish = old_finish
         
         return coord
 

@@ -67,19 +67,19 @@ def test_peg_movement():
     peg = player.pegs[0]
 
     # Move peg from home to start (simulating roll of 1 or 6)
-    peg.position = 0
+    peg.move_to(0)
     assert peg.position == 0
     assert not peg.is_in_home
     assert not peg.is_in_finish
 
     # Move peg to finish zone
-    peg.position = 100
+    peg.move_to(100)
     assert peg.position == 100
     assert not peg.is_in_home
     assert peg.is_in_finish
 
     # Send peg home
-    peg.position = -1
+    peg.send_home()
     assert peg.position == -1
     assert peg.is_in_home
     assert not peg.is_in_finish
