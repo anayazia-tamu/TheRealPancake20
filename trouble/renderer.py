@@ -4,6 +4,8 @@ Handles all visual rendering and UI display
 """
 
 import pygame
+import pygame.gfxdraw
+import math
 from typing import Tuple, List, Optional, Dict
 from game_state import GameState, Player, Peg
 
@@ -12,19 +14,22 @@ from game_state import GameState, Player, Peg
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 900
 
-# Color definitions
+# Modern Color Palette
 COLORS = {
-    "RED": (220, 50, 50),
-    "BLUE": (50, 120, 220),
-    "GREEN": (50, 200, 80),
-    "YELLOW": (240, 220, 50),
-    "BOARD_BG": (240, 230, 210),
-    "TRACK": (255, 255, 255),
-    "DOUBLE_TROUBLE": (255, 200, 50),
-    "HIGHLIGHT": (100, 255, 100),
-    "BLACK": (0, 0, 0),
+    "RED": (231, 76, 60),        # Alizarin
+    "BLUE": (52, 152, 219),      # Peter River
+    "GREEN": (46, 204, 113),     # Emerald
+    "YELLOW": (241, 196, 15),    # Sun Flower
+    "BOARD_BG": (44, 62, 80),    # Midnight Blue (Background)
+    "BOARD_CIRCLE": (236, 240, 241), # Clouds
+    "TRACK": (189, 195, 199),    # Silver
+    "DOUBLE_TROUBLE": (230, 126, 34), # Carrot
+    "HIGHLIGHT": (26, 188, 156), # Turquoise
+    "BLACK": (44, 62, 80),       # Dark Blue/Black text
     "WHITE": (255, 255, 255),
-    "GRAY": (128, 128, 128),
+    "GRAY": (149, 165, 166),     # Concrete
+    "SHADOW": (0, 0, 0, 100),    # Semi-transparent shadow
+    "TEXT": (236, 240, 241),     # Light text for dark bg
 }
 
 
@@ -33,8 +38,15 @@ class GameRenderer:
 
     def __init__(self, screen: pygame.Surface):
         self.screen = screen
-        self.font_large = pygame.font.Font(None, 48)
-        self.font_small = pygame.font.Font(None, 32)
+        self.font_large = pygame.font.SysFont("Arial Rounded MT Bold", 64)
+        self.font_medium = pygame.font.SysFont("Arial Rounded MT Bold", 48)
+        self.font_small = pygame.font.SysFont("Arial Rounded MT Bold", 24)
+        
+        # Fallback if system font not found
+        if not self.font_large:
+             self.font_large = pygame.font.Font(None, 64)
+             self.font_medium = pygame.font.Font(None, 48)
+             self.font_small = pygame.font.Font(None, 24)
 
         self.board_center = (600, 450)
         self.track_radius = 250
@@ -43,12 +55,15 @@ class GameRenderer:
         # Calculate and cache board space positions
         self._calculate_space_positions()
 
-    def render_all(self, game_state: GameState, setup_mode: bool = False):
+    def render_all(self, game_state: GameState, setup_mode: bool = False, mouse_pos: Tuple[int, int] = (0, 0)):
         """Render the complete game state"""
+        # Draw background gradient (simulated with rects for performance or just solid color)
         self.screen.fill(COLORS["BOARD_BG"])
-
+        
+        # Subtle background pattern or vignette could go here
+        
         if setup_mode:
-            self.render_setup_screen()
+            self.render_setup_screen(mouse_pos)
         elif game_state.game_over:
             self.render_game_over_screen(game_state.winner)
         else:
@@ -56,9 +71,12 @@ class GameRenderer:
             self.render_track_spaces()
             self.render_home_bases(game_state.players)
             self.render_finish_zones(game_state.players)
-            self.render_pegs(game_state.players)
+            self.render_pegs_with_animation(game_state)
+            self.render_center_dice(game_state)
             self.render_dice_button(
-                game_state.current_roll is None, game_state.current_roll
+                game_state.current_roll is None and not game_state.is_rolling, 
+                game_state.current_roll, 
+                mouse_pos
             )
 
             if game_state.players:
@@ -70,8 +88,6 @@ class GameRenderer:
 
     def _calculate_space_positions(self):
         """Calculate and cache positions for all board spaces"""
-        import math
-
         # Calculate positions for 28 track spaces in a circle
         for i in range(28):
             angle = (i / 28) * 2 * math.pi - math.pi / 2  # Start at top
@@ -79,15 +95,88 @@ class GameRenderer:
             y = self.board_center[1] + int(self.track_radius * math.sin(angle))
             self.space_positions[i] = (x, y)
 
+    def _draw_circle_antialiased(self, surface, color, center, radius, border_color=None, border_width=0):
+        """Helper to draw smooth circles"""
+        x, y = center
+        pygame.gfxdraw.aacircle(surface, x, y, radius, color)
+        pygame.gfxdraw.filled_circle(surface, x, y, radius, color)
+        
+        if border_color and border_width > 0:
+            # Draw border (simulated by drawing a slightly larger circle behind or multiple circles)
+            # For simple AA border, we can just draw an AA circle outline
+            for i in range(border_width):
+                 pygame.gfxdraw.aacircle(surface, x, y, radius - i, border_color)
+
+    def _draw_shadow(self, surface, center, radius, offset=(5, 5), alpha=100):
+        """Draw a drop shadow"""
+        x, y = center
+        ox, oy = offset
+        # Create a temporary surface for the shadow to handle alpha
+        shadow_surface = pygame.Surface((radius * 2 + 10, radius * 2 + 10), pygame.SRCALPHA)
+        pygame.draw.circle(shadow_surface, (0, 0, 0, alpha), (radius + 5, radius + 5), radius)
+        surface.blit(shadow_surface, (x - radius - 5 + ox, y - radius - 5 + oy))
+
     def render_board(self):
         """Render the main board background"""
-        # Draw a large circle for the board
-        pygame.draw.circle(
-            self.screen, COLORS["TRACK"], self.board_center, self.track_radius + 30, 0
-        )
+        # Draw board shadow
+        self._draw_shadow(self.screen, self.board_center, self.track_radius + 40, offset=(8, 8), alpha=60)
+        
+        # Draw main board circle
+        self._draw_circle_antialiased(self.screen, COLORS["BOARD_CIRCLE"], self.board_center, self.track_radius + 40)
+        
+        # Draw center circle (pop-o-matic area background)
+        self._draw_circle_antialiased(self.screen, COLORS["BOARD_BG"], self.board_center, 80)
+        
+        # Draw a ring around the center
+        pygame.gfxdraw.aacircle(self.screen, self.board_center[0], self.board_center[1], 80, COLORS["GRAY"])
 
-        # Draw center circle
-        pygame.draw.circle(self.screen, COLORS["BOARD_BG"], self.board_center, 80, 0)
+    def render_center_dice(self, game_state: GameState):
+        """Render the dice in the center of the board"""
+        # Determine what value to show
+        dice_value = None
+        if game_state.is_rolling:
+            dice_value = game_state.current_animation_value
+        elif game_state.current_roll is not None:
+            dice_value = game_state.current_roll
+        elif game_state.last_roll is not None:
+            dice_value = game_state.last_roll
+            
+        if dice_value is None:
+            return
+
+        cx, cy = self.board_center
+        dice_size = 60
+        
+        # Draw dice background (white rounded rect)
+        rect = pygame.Rect(cx - dice_size//2, cy - dice_size//2, dice_size, dice_size)
+        pygame.draw.rect(self.screen, COLORS["WHITE"], rect, border_radius=10)
+        pygame.draw.rect(self.screen, COLORS["GRAY"], rect, width=2, border_radius=10)
+        
+        # Draw pips
+        pip_radius = 5
+        pip_color = COLORS["BLACK"]
+        
+        # Helper to draw a pip
+        def draw_pip(dx, dy):
+            pygame.draw.circle(self.screen, pip_color, (cx + dx, cy + dy), pip_radius)
+            
+        # Pip positions relative to center
+        d = 15
+        
+        if dice_value % 2 == 1: # 1, 3, 5
+            draw_pip(0, 0)
+            
+        if dice_value >= 2: # 2, 3, 4, 5, 6
+            draw_pip(-d, -d)
+            draw_pip(d, d)
+            
+        if dice_value >= 4: # 4, 5, 6
+            draw_pip(d, -d)
+            draw_pip(-d, d)
+            
+        if dice_value == 6: # 6
+            draw_pip(-d, 0)
+            draw_pip(d, 0)
 
     def render_track_spaces(self):
         """Render the playing track spaces"""
@@ -98,16 +187,19 @@ class GameRenderer:
             # Determine color based on whether it's a double trouble space
             if position in double_trouble_positions:
                 color = COLORS["DOUBLE_TROUBLE"]
+                radius = 18 # Slightly larger
             else:
                 color = COLORS["WHITE"]
+                radius = 15
 
+            # Draw shadow for depth
+            self._draw_shadow(self.screen, (x, y), radius, offset=(2, 2), alpha=50)
+            
             # Draw the space
-            pygame.draw.circle(self.screen, color, (x, y), 15, 0)
-            pygame.draw.circle(self.screen, COLORS["BLACK"], (x, y), 15, 2)
-
-            # Draw position number for debugging (optional)
-            # text = self.font_small.render(str(position), True, COLORS["BLACK"])
-            # self.screen.blit(text, (x - 10, y - 10))
+            self._draw_circle_antialiased(self.screen, color, (x, y), radius)
+            
+            # Draw border
+            pygame.gfxdraw.aacircle(self.screen, x, y, radius, COLORS["GRAY"])
 
     def render_home_bases(self, players: List[Player]):
         """Render home bases for all players"""
@@ -122,28 +214,30 @@ class GameRenderer:
         for player in players:
             if player.color in home_positions:
                 base_x, base_y = home_positions[player.color]
-
-                # Draw home base background
-                pygame.draw.rect(
-                    self.screen,
-                    COLORS[player.color],
-                    (base_x - 60, base_y - 60, 120, 120),
-                    0,
-                )
-                pygame.draw.rect(
-                    self.screen,
-                    COLORS["BLACK"],
-                    (base_x - 60, base_y - 60, 120, 120),
-                    3,
-                )
+                
+                # Draw base background with rounded corners
+                rect = pygame.Rect(base_x - 70, base_y - 70, 140, 140)
+                
+                # Shadow
+                shadow_rect = rect.copy()
+                shadow_rect.move_ip(5, 5)
+                pygame.draw.rect(self.screen, COLORS["SHADOW"], shadow_rect, border_radius=20)
+                
+                # Base
+                pygame.draw.rect(self.screen, COLORS[player.color], rect, border_radius=20)
+                
+                # Inner area
+                inner_rect = rect.inflate(-10, -10)
+                pygame.draw.rect(self.screen, (255, 255, 255, 50), inner_rect, border_radius=15, width=2)
 
                 # Draw 4 spots for pegs in a 2x2 grid
                 for i in range(4):
                     spot_x = base_x - 30 + (i % 2) * 60
                     spot_y = base_y - 30 + (i // 2) * 60
-                    pygame.draw.circle(
-                        self.screen, COLORS["WHITE"], (spot_x, spot_y), 12, 2
-                    )
+                    
+                    # Spot background
+                    self._draw_circle_antialiased(self.screen, (0, 0, 0, 50), (spot_x, spot_y), 14)
+                    self._draw_circle_antialiased(self.screen, COLORS["WHITE"], (spot_x, spot_y), 12)
 
     def render_finish_zones(self, players: List[Player]):
         """Render finish zones for all players"""
@@ -173,8 +267,14 @@ class GameRenderer:
                     x = start_x + dx * i * 30
                     y = start_y + dy * i * 30
 
-                    pygame.draw.circle(self.screen, COLORS[player.color], (x, y), 12, 0)
-                    pygame.draw.circle(self.screen, COLORS["BLACK"], (x, y), 12, 2)
+                    self._draw_circle_antialiased(self.screen, COLORS[player.color], (x, y), 12)
+                    pygame.gfxdraw.aacircle(self.screen, int(x), int(y), 12, COLORS["WHITE"])
+
+    def get_screen_position_for_index(self, index: int) -> Tuple[int, int]:
+        """Get screen position for a track index (0-27)"""
+        if index in self.space_positions:
+            return self.space_positions[index]
+        return (0, 0)
 
     def get_peg_screen_position(self, peg: Peg) -> Tuple[int, int]:
         """Get the screen coordinates for a peg"""
@@ -201,17 +301,17 @@ class GameRenderer:
             "YELLOW": (-1, 0),
         }
 
-        if peg.is_in_home:
+        if peg.position == -1:
             # Position in home base (2x2 grid)
             base_x, base_y = home_positions[peg.owner.color]
-            pegs_in_home = peg.owner.get_pegs_in_home()
+            pegs_in_home = [p for p in peg.owner.pegs if p.position == -1]
             index = pegs_in_home.index(peg) if peg in pegs_in_home else 0
 
             x = base_x - 30 + (index % 2) * 60
             y = base_y - 30 + (index // 2) * 60
             return (x, y)
 
-        elif peg.is_in_finish:
+        elif peg.position >= 100:
             # Position in finish zone
             start_x, start_y = finish_positions[peg.owner.color]
             dx, dy = finish_directions[peg.owner.color]
@@ -231,128 +331,226 @@ class GameRenderer:
         """Render all pegs on the board"""
         for player in players:
             for peg in player.pegs:
-                x, y = self.get_peg_screen_position(peg)
+                # Check if this peg is currently animating
+                is_animating = False
+                # We need to access the game state to check animation, but render_pegs only takes players list.
+                # Ideally we should pass game_state or handle this differently.
+                # For now, let's assume we can't easily access game_state here without changing signature.
+                # Wait, render_pegs is called from render_all which has game_state.
+                # Let's update render_pegs signature in a separate step or just do it here if we can see the caller.
+                # The caller is render_all(self, game_state...).
+                # So we should update render_pegs to take game_state instead of players, or pass animation info.
+                pass
 
-                # Draw peg
-                pygame.draw.circle(self.screen, COLORS[player.color], (x, y), 10, 0)
-                pygame.draw.circle(self.screen, COLORS["BLACK"], (x, y), 10, 2)
+    def render_pegs_with_animation(self, game_state: GameState):
+        """Render all pegs, handling animation"""
+        for player in game_state.players:
+            for peg in player.pegs:
+                x, y = 0, 0
+                
+                if game_state.is_animating_move and game_state.move_animation and game_state.move_animation['peg'] == peg:
+                    # Calculate interpolated position along path
+                    path = game_state.move_animation['path']
+                    start_time = game_state.move_animation['start_time']
+                    step_duration = game_state.move_animation['step_duration']
+                    current_time = pygame.time.get_ticks()
+                    
+                    elapsed = current_time - start_time
+                    total_steps = len(path) - 1
+                    
+                    if total_steps <= 0:
+                        # Should not happen if path has at least start and end
+                        x, y = self.get_peg_screen_position(peg)
+                    else:
+                        # Determine which step we are on
+                        current_step_index = int(elapsed / step_duration)
+                        
+                        if current_step_index >= total_steps:
+                            # Animation finished, stay at end
+                            end_pos = path[-1]
+                            coord = self._get_coord_for_pos(peg, end_pos)
+                            x, y = coord
+                        else:
+                            # Interpolate between current step and next step
+                            step_progress = (elapsed % step_duration) / step_duration
+                            
+                            start_pos = path[current_step_index]
+                            end_pos = path[current_step_index + 1]
+                            
+                            start_coord = self._get_coord_for_pos(peg, start_pos)
+                            end_coord = self._get_coord_for_pos(peg, end_pos)
+                            
+                            # Lerp
+                            x = start_coord[0] + (end_coord[0] - start_coord[0]) * step_progress
+                            y = start_coord[1] + (end_coord[1] - start_coord[1]) * step_progress
+                    
+                else:
+                    x, y = self.get_peg_screen_position(peg)
 
-    def render_dice_button(self, enabled: bool, current_roll: Optional[int]):
+                # Cast to int for drawing
+                ix, iy = int(x), int(y)
+
+                # Draw peg shadow
+                self._draw_shadow(self.screen, (ix, iy), 10, offset=(3, 3), alpha=80)
+
+                # Draw peg body
+                self._draw_circle_antialiased(self.screen, COLORS[player.color], (ix, iy), 12)
+                
+                # Draw shine/highlight on peg for 3D effect
+                pygame.gfxdraw.filled_circle(self.screen, ix - 3, iy - 3, 4, (255, 255, 255, 100))
+                
+                # Outline
+                pygame.gfxdraw.aacircle(self.screen, ix, iy, 12, (0, 0, 0))
+
+    def _get_coord_for_pos(self, peg: Peg, pos: int) -> Tuple[int, int]:
+        """Get screen coordinate for a logical position"""
+        # Temporarily set peg position to get coordinate, then restore
+        old_pos = peg.position
+        old_home = peg.position == -1   
+        old_finish = peg.position >= 100
+        
+        peg.position = pos
+        coord = self.get_peg_screen_position(peg)
+        
+        # Restore
+        peg.position = old_pos
+        
+        return coord
+
+    def render_dice_button(self, enabled: bool, current_roll: Optional[int], mouse_pos: Tuple[int, int]):
         """Render the dice rolling button"""
         button_x = 600
         button_y = 800
-        button_width = 150
-        button_height = 60
+        button_width = 180
+        button_height = 70
+        
+        rect = pygame.Rect(
+            button_x - button_width // 2,
+            button_y - button_height // 2,
+            button_width,
+            button_height,
+        )
+
+        # Check hover
+        is_hovered = rect.collidepoint(mouse_pos) and enabled
 
         # Button color based on state
-        if enabled:
-            button_color = COLORS["GREEN"]
-        else:
+        if not enabled:
             button_color = COLORS["GRAY"]
+            offset_y = 0
+        elif is_hovered:
+            button_color = (60, 220, 130) # Brighter green
+            offset_y = -2 # Lift up effect
+        else:
+            button_color = COLORS["GREEN"]
+            offset_y = 0
 
-        # Draw button
-        pygame.draw.rect(
-            self.screen,
-            button_color,
-            (
-                button_x - button_width // 2,
-                button_y - button_height // 2,
-                button_width,
-                button_height,
-            ),
-            0,
-            10,
-        )
-        pygame.draw.rect(
-            self.screen,
-            COLORS["BLACK"],
-            (
-                button_x - button_width // 2,
-                button_y - button_height // 2,
-                button_width,
-                button_height,
-            ),
-            3,
-            10,
-        )
+        # Draw shadow/sides for 3D effect
+        shadow_rect = rect.copy()
+        shadow_rect.move_ip(0, 5)
+        pygame.draw.rect(self.screen, (30, 130, 70) if enabled else (100, 110, 110), shadow_rect, border_radius=15)
 
+        # Draw main button face
+        draw_rect = rect.copy()
+        draw_rect.move_ip(0, offset_y)
+        pygame.draw.rect(self.screen, button_color, draw_rect, border_radius=15)
+        
         # Draw text
         if current_roll is not None:
-            text = self.font_large.render(str(current_roll), True, COLORS["BLACK"])
+            text = self.font_large.render(str(current_roll), True, COLORS["WHITE"])
         else:
-            text = self.font_small.render("ROLL", True, COLORS["BLACK"])
+            text = self.font_medium.render("ROLL", True, COLORS["WHITE"])
 
-        text_rect = text.get_rect(center=(button_x, button_y))
+        text_rect = text.get_rect(center=(button_x, button_y + offset_y))
         self.screen.blit(text, text_rect)
 
     def render_player_indicator(self, current_player: Player):
         """Render indicator showing whose turn it is"""
-        text = self.font_small.render(
+        # Create a banner at the top
+        banner_rect = pygame.Rect(0, 0, SCREEN_WIDTH, 80)
+        surface = pygame.Surface((SCREEN_WIDTH, 80), pygame.SRCALPHA)
+        pygame.draw.rect(surface, (0, 0, 0, 100), banner_rect)
+        self.screen.blit(surface, (0, 0))
+        
+        text = self.font_medium.render(
             f"{current_player.name}'s Turn", True, COLORS[current_player.color]
         )
-        text_rect = text.get_rect(center=(600, 50))
+        text_rect = text.get_rect(center=(600, 40))
+        
+        # Add a glow/shadow to text
+        shadow_text = self.font_medium.render(
+            f"{current_player.name}'s Turn", True, (0, 0, 0)
+        )
+        shadow_rect = shadow_text.get_rect(center=(602, 42))
+        self.screen.blit(shadow_text, shadow_rect)
         self.screen.blit(text, text_rect)
 
     def render_message(self, message: str):
         """Render game status message"""
         if message:
-            text = self.font_small.render(message, True, COLORS["BLACK"])
-            text_rect = text.get_rect(center=(600, 100))
+            # Render below the player indicator
+            text = self.font_small.render(message, True, COLORS["TEXT"])
+            text_rect = text.get_rect(center=(600, 90))
             self.screen.blit(text, text_rect)
 
-    def render_setup_screen(self):
+    def render_setup_screen(self, mouse_pos: Tuple[int, int]):
         """Render the game setup screen"""
         # Title
-        title = self.font_large.render("TROUBLE", True, COLORS["BLACK"])
+        title = self.font_large.render("TROUBLE", True, COLORS["YELLOW"])
+        title_shadow = self.font_large.render("TROUBLE", True, (0, 0, 0))
+        
         title_rect = title.get_rect(center=(600, 200))
+        shadow_rect = title_shadow.get_rect(center=(604, 204))
+        
+        self.screen.blit(title_shadow, shadow_rect)
         self.screen.blit(title, title_rect)
 
         # Instructions
-        instruction = self.font_small.render(
-            "Select Number of Players", True, COLORS["BLACK"]
+        instruction = self.font_medium.render(
+            "Select Number of Players", True, COLORS["TEXT"]
         )
         instruction_rect = instruction.get_rect(center=(600, 300))
         self.screen.blit(instruction, instruction_rect)
 
         # Player count buttons
         button_y = 450
-        button_spacing = 150
-        start_x = 600 - (3 * button_spacing) // 2
+        button_spacing = 180
+        start_x = 600 - (2 * button_spacing) // 2
 
         for i in range(2, 5):  # 2, 3, 4 players
             button_x = start_x + (i - 2) * button_spacing
+            
+            rect = pygame.Rect(button_x - 60, button_y - 50, 120, 100)
+            is_hovered = rect.collidepoint(mouse_pos)
+            
+            offset_y = -5 if is_hovered else 0
+            color = COLORS["BLUE"] if is_hovered else (41, 128, 185)
 
-            # Draw button
-            pygame.draw.rect(
-                self.screen,
-                COLORS["BLUE"],
-                (button_x - 50, button_y - 40, 100, 80),
-                0,
-                10,
-            )
-            pygame.draw.rect(
-                self.screen,
-                COLORS["BLACK"],
-                (button_x - 50, button_y - 40, 100, 80),
-                3,
-                10,
-            )
+            # Shadow
+            shadow_rect = rect.copy()
+            shadow_rect.move_ip(0, 8)
+            pygame.draw.rect(self.screen, (20, 60, 90), shadow_rect, border_radius=15)
 
-            # Draw text
+            # Button
+            draw_rect = rect.copy()
+            draw_rect.move_ip(0, offset_y)
+            pygame.draw.rect(self.screen, color, draw_rect, border_radius=15)
+
+            # Text
             text = self.font_large.render(str(i), True, COLORS["WHITE"])
-            text_rect = text.get_rect(center=(button_x, button_y))
+            text_rect = text.get_rect(center=(button_x, button_y + offset_y))
             self.screen.blit(text, text_rect)
 
     def render_game_over_screen(self, winner: Player):
         """Render the game over screen"""
         # Semi-transparent overlay
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        overlay.set_alpha(200)
-        overlay.fill(COLORS["WHITE"])
+        overlay.set_alpha(220)
+        overlay.fill(COLORS["BOARD_BG"])
         self.screen.blit(overlay, (0, 0))
 
         # Winner announcement
-        title = self.font_large.render("GAME OVER!", True, COLORS["BLACK"])
+        title = self.font_large.render("GAME OVER!", True, COLORS["WHITE"])
         title_rect = title.get_rect(center=(600, 350))
         self.screen.blit(title, title_rect)
 
@@ -368,8 +566,12 @@ class GameRenderer:
         for peg in pegs:
             x, y = self.get_peg_screen_position(peg)
 
-            # Draw highlight circle around peg
-            pygame.draw.circle(self.screen, COLORS["HIGHLIGHT"], (x, y), 15, 3)
+            # Draw pulsating highlight (could animate radius based on time if we had it)
+            self._draw_circle_antialiased(self.screen, COLORS["HIGHLIGHT"], (x, y), 20)
+            
+            # Redraw peg on top
+            self._draw_circle_antialiased(self.screen, COLORS[peg.owner.color], (x, y), 12)
+            pygame.gfxdraw.aacircle(self.screen, x, y, 12, (0, 0, 0))
 
     def get_clicked_peg(
         self, mouse_pos: Tuple[int, int], players: List[Player]
@@ -385,8 +587,8 @@ class GameRenderer:
                 # Calculate distance from mouse to peg center
                 distance = ((mouse_x - peg_x) ** 2 + (mouse_y - peg_y) ** 2) ** 0.5
 
-                # If within peg radius (10 pixels + some tolerance)
-                if distance <= 15:
+                # If within peg radius (12 pixels + some tolerance)
+                if distance <= 20:
                     return peg
 
         return None
@@ -397,8 +599,8 @@ class GameRenderer:
 
         button_x = 600
         button_y = 800
-        button_width = 150
-        button_height = 60
+        button_width = 180
+        button_height = 70
 
         # Check if mouse is within button bounds
         if (
