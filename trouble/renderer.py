@@ -55,7 +55,7 @@ class GameRenderer:
         # Calculate and cache board space positions
         self._calculate_space_positions()
 
-    def render_all(self, game_state: GameState, setup_mode: bool = False, mouse_pos: Tuple[int, int] = (0, 0)):
+    def render_all(self, game_state: GameState, setup_mode: bool = False, mouse_pos: Tuple[int, int] = (0, 0), showing_rules: bool = False):
         """Render the complete game state"""
         # Draw background gradient (simulated with rects for performance or just solid color)
         self.screen.fill(COLORS["BOARD_BG"])
@@ -85,6 +85,12 @@ class GameRenderer:
                     self.render_player_indicator(current_player)
 
             self.render_message(game_state.message)
+
+        # Always render rules button (unless in setup? maybe keep it everywhere)
+        self.render_rules_button(mouse_pos)
+
+        if showing_rules:
+            self.render_rules_screen()
 
     def _calculate_space_positions(self):
         """Calculate and cache positions for all board spaces"""
@@ -614,3 +620,20 @@ class GameRenderer:
             return True
 
         return False
+
+    def render_rules_button(self, mouse_pos: Tuple[int, int]):
+        bx, by, br = SCREEN_WIDTH - 60, 40, 25
+        hover = ((mouse_pos[0] - bx)**2 + (mouse_pos[1] - by)**2)**0.5 <= br
+        self._draw_shadow(self.screen, (bx, by), br, offset=(2, 2), alpha=50)
+        self._draw_circle_antialiased(self.screen, (93, 173, 226) if hover else (52, 152, 219), (bx, by), br)
+        pygame.gfxdraw.aacircle(self.screen, bx, by, br, COLORS["WHITE"])
+        self.screen.blit(self.font_medium.render("?", True, COLORS["WHITE"]), self.font_medium.render("?", True, COLORS["WHITE"]).get_rect(center=(bx, by)))
+
+    def is_rules_button_clicked(self, pos: Tuple[int, int]) -> bool:
+        return ((pos[0] - (SCREEN_WIDTH - 60))**2 + (pos[1] - 40)**2)**0.5 <= 25
+
+    def render_rules_screen(self):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT)); overlay.set_alpha(240); overlay.fill(COLORS["BOARD_BG"]); self.screen.blit(overlay, (0, 0))
+        self.screen.blit(self.font_large.render("GAME RULES", True, COLORS["YELLOW"]), self.font_large.render("GAME RULES", True, COLORS["YELLOW"]).get_rect(center=(600, 100)))
+        [self.screen.blit(txt, txt.get_rect(center=(600, 200 + i * 50))) for i, txt in enumerate([self.font_small.render(l, True, COLORS["WHITE"]) for l in ["1. Select color & 4 pegs.", "2. Roll die to move.", "3. Roll 6 to Start.", "4. 6 grants bonus roll.", "5. Land on opp to send Home.", "6. All pegs to Finish wins!", "", "(Click to close)"]])]
+

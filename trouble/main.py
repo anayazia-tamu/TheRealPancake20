@@ -8,7 +8,6 @@ import random
 from game_state import GameState
 from renderer import GameRenderer
 
-
 class TroubleGame:
     """Main game controller that manages the game loop and user interactions"""
 
@@ -23,6 +22,7 @@ class TroubleGame:
 
         self.setup_mode = True
         self.waiting_for_peg_selection = False
+        self.showing_rules = False
 
     def run(self):
         """Main game loop"""
@@ -62,10 +62,10 @@ class TroubleGame:
 
     def handle_events(self, mouse_pos):
         """Handle mouse click events"""
-        if self.setup_mode:
-            self.handle_setup_click(mouse_pos)
-        else:
-            self.handle_game_click(mouse_pos)
+        if self.renderer.is_rules_button_clicked(mouse_pos): self.showing_rules = not self.showing_rules; return
+        if self.showing_rules: self.showing_rules = False; return
+        if self.setup_mode: self.handle_setup_click(mouse_pos)
+        else: self.handle_game_click(mouse_pos)
 
     def handle_setup_click(self, mouse_pos):
         """Handle clicks during game setup"""
@@ -219,7 +219,7 @@ class TroubleGame:
     def render(self):
         """Render the current game state"""
         mouse_pos = pygame.mouse.get_pos()
-        self.renderer.render_all(self.game_state, self.setup_mode, mouse_pos)
+        self.renderer.render_all(self.game_state, self.setup_mode, mouse_pos, self.showing_rules)
 
         # Highlight valid pegs if waiting for selection
         if self.waiting_for_peg_selection and self.game_state.current_roll is not None:
