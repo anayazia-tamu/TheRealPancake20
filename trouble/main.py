@@ -27,6 +27,7 @@ class TroubleGame:
         self.waiting_for_peg_selection = False
         self.viewing_results = False
         self.results_data = []
+        self.paused = False
 
     def run(self):
         """Main game loop"""
@@ -72,6 +73,8 @@ class TroubleGame:
             self.handle_results_click(mouse_pos)
         elif self.setup_mode:
             self.handle_setup_click(mouse_pos)
+        elif self.paused:
+            self.handle_pause_menu_click(mouse_pos)
         else:
             self.handle_game_click(mouse_pos)
 
@@ -152,6 +155,11 @@ class TroubleGame:
 
     def handle_game_click(self, mouse_pos):
         """Handle clicks during gameplay"""
+        # Check if pause menu button was clicked
+        if self.renderer.is_pause_button_clicked(mouse_pos):
+            self.paused = True
+            return
+        
         # Check if game is over and menu button was clicked
         if self.game_state.game_over:
             if self.renderer.is_menu_button_clicked(mouse_pos):
@@ -284,6 +292,27 @@ class TroubleGame:
             self.game_state.advance_turn()
             self.waiting_for_peg_selection = False
 
+    def handle_pause_menu_click(self, mouse_pos):
+        """Handle clicks on the pause menu"""
+        mouse_x, mouse_y = mouse_pos
+        
+        # Back to Main Menu button
+        menu_button_rect = pygame.Rect(450, 380, 300, 70)
+        if menu_button_rect.collidepoint(mouse_x, mouse_y):
+            self.paused = False
+            self.main_menu_mode = True
+            self.setup_mode = False
+            self.waiting_for_peg_selection = False
+            self.game_state = GameState()  # Create fresh game state
+            return
+        
+        # Exit button
+        exit_button_rect = pygame.Rect(450, 480, 300, 70)
+        if exit_button_rect.collidepoint(mouse_x, mouse_y):
+            pygame.quit()
+            exit()
+            return
+    
     def render(self):
         """Render the current game state"""
         mouse_pos = pygame.mouse.get_pos()
@@ -299,6 +328,10 @@ class TroubleGame:
             if self.waiting_for_peg_selection and self.game_state.current_roll is not None:
                 valid_pegs = self.game_state.get_valid_pegs(self.game_state.current_roll)
                 self.renderer.highlight_pegs(valid_pegs)
+            
+            # Render pause menu if paused
+            if self.paused:
+                self.renderer.render_pause_menu(mouse_pos)
 
 
 def main():

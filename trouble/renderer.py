@@ -56,6 +56,7 @@ class GameRenderer:
                     self.render_player_indicator(current_player)
 
             self.render_message(game_state.message)
+            self.render_pause_button(mouse_pos)
 
     def _calculate_space_positions(self):
         # Calculate and cache positions for all board spaces
@@ -646,3 +647,105 @@ class GameRenderer:
         # Check if the back to menu button was clicked on game over screen
         menu_button_rect = pygame.Rect(450, 600, 300, 70)
         return menu_button_rect.collidepoint(mouse_pos)
+    
+    def render_pause_button(self, mouse_pos: Tuple[int, int]):
+        """Render the pause/menu button in the top-right corner"""
+        button_x = 1120
+        button_y = 40
+        button_size = 50
+        
+        rect = pygame.Rect(button_x - button_size // 2, button_y - button_size // 2, button_size, button_size)
+        is_hovered = rect.collidepoint(mouse_pos)
+        
+        # Button color
+        if is_hovered:
+            button_color = (70, 80, 90)
+            offset_y = -2
+        else:
+            button_color = (52, 73, 94)
+            offset_y = 0
+        
+        # Shadow
+        shadow_rect = rect.copy()
+        shadow_rect.move_ip(0, 4)
+        pygame.draw.rect(self.screen, (30, 40, 50), shadow_rect, border_radius=8)
+        
+        # Button
+        draw_rect = rect.copy()
+        draw_rect.move_ip(0, offset_y)
+        pygame.draw.rect(self.screen, button_color, draw_rect, border_radius=8)
+        
+        # Draw three horizontal lines (hamburger menu icon)
+        line_color = COLORS["WHITE"]
+        line_width = 30
+        line_height = 3
+        line_spacing = 7
+        
+        for i in range(3):
+            line_y = button_y + offset_y - line_spacing + i * line_spacing
+            line_rect = pygame.Rect(button_x - line_width // 2, line_y - line_height // 2, line_width, line_height)
+            pygame.draw.rect(self.screen, line_color, line_rect, border_radius=2)
+    
+    def is_pause_button_clicked(self, mouse_pos: Tuple[int, int]) -> bool:
+        """Check if the pause button was clicked"""
+        button_x = 1120
+        button_y = 40
+        button_size = 50
+        
+        rect = pygame.Rect(button_x - button_size // 2, button_y - button_size // 2, button_size, button_size)
+        return rect.collidepoint(mouse_pos)
+    
+    def render_pause_menu(self, mouse_pos: Tuple[int, int]):
+        """Render the pause menu overlay"""
+        # Create blurred/darkened overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(200)
+        overlay.fill((30, 40, 50))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Title
+        title = self.font_large.render("PAUSED", True, COLORS["WHITE"])
+        title_rect = title.get_rect(center=(600, 250))
+        self.screen.blit(title, title_rect)
+        
+        # Back to Main Menu button
+        menu_button_rect = pygame.Rect(450, 380, 300, 70)
+        is_menu_hovered = menu_button_rect.collidepoint(mouse_pos)
+        offset_y_menu = -3 if is_menu_hovered else 0
+        menu_color = (60, 220, 130) if is_menu_hovered else COLORS["GREEN"]
+        
+        # Shadow
+        shadow_rect = menu_button_rect.copy()
+        shadow_rect.move_ip(0, 5)
+        pygame.draw.rect(self.screen, (30, 130, 70), shadow_rect, border_radius=15)
+        
+        # Button
+        draw_rect = menu_button_rect.copy()
+        draw_rect.move_ip(0, offset_y_menu)
+        pygame.draw.rect(self.screen, menu_color, draw_rect, border_radius=15)
+        
+        # Text
+        menu_text = self.font_medium.render("Main Menu", True, COLORS["WHITE"])
+        menu_text_rect = menu_text.get_rect(center=(600, 415 + offset_y_menu))
+        self.screen.blit(menu_text, menu_text_rect)
+        
+        # Exit button
+        exit_button_rect = pygame.Rect(450, 480, 300, 70)
+        is_exit_hovered = exit_button_rect.collidepoint(mouse_pos)
+        offset_y_exit = -3 if is_exit_hovered else 0
+        exit_color = (231, 76, 60) if is_exit_hovered else COLORS["RED"]
+        
+        # Shadow
+        shadow_rect = exit_button_rect.copy()
+        shadow_rect.move_ip(0, 5)
+        pygame.draw.rect(self.screen, (150, 40, 30), shadow_rect, border_radius=15)
+        
+        # Button
+        draw_rect = exit_button_rect.copy()
+        draw_rect.move_ip(0, offset_y_exit)
+        pygame.draw.rect(self.screen, exit_color, draw_rect, border_radius=15)
+        
+        # Text
+        exit_text = self.font_medium.render("Exit Game", True, COLORS["WHITE"])
+        exit_text_rect = exit_text.get_rect(center=(600, 515 + offset_y_exit))
+        self.screen.blit(exit_text, exit_text_rect)
