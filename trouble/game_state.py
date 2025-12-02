@@ -467,5 +467,5 @@ class GameState:
                 f.write(f"{place}{place_suffix} Place: {color} ({pegs_finished}/4 pegs finished)\n")
             
             f.write("\n")
-            f.write(f"Winner: {self.winner.color}\n")rent_player_index]
+            f.write(f"Winner: {self.winner.color}\n")
         return None
