@@ -153,10 +153,9 @@ class TroubleGame:
                     self.results_data.append(content)
             except Exception as e:
                 print(f"Error loading {filename}: {e}")
-        else:
-            # All files loaded successfully (or no files to load)
-            if files:
-                print(f"Successfully loaded {len(self.results_data)} game result(s)")
+        
+        if files:
+            print(f"Successfully loaded {len(self.results_data)} game result(s)")
 
     def handle_setup_click(self, mouse_pos):
         """Handle clicks during game setup"""
@@ -178,9 +177,6 @@ class TroubleGame:
                     self.game_state.initialize_game(i)
                     self.setup_mode = False
                     return
-            else:
-                # No button was clicked in the valid y-range
-                print("Click was in button area but not on any button")
 
     def handle_game_click(self, mouse_pos):
         """Handle clicks during gameplay"""
@@ -292,10 +288,7 @@ class TroubleGame:
                 return
 
             # Update message based on move result
-            if move_result.get("captured"):
-                # Message already set in move_peg
-                pass
-            elif move_result.get("entered_finish"):
+            if move_result.get("entered_finish"):
                 self.game_state.message = f"{peg.owner.name} entered the finish zone!"
             elif move_result.get("landed_on_double_trouble"):
                 self.game_state.message = (
@@ -316,11 +309,10 @@ class TroubleGame:
                     self.game_state.message = f"Rolled a 6! Bonus roll!"
                 # Reset for next roll
                 self.game_state.current_roll = None
-                self.waiting_for_peg_selection = False
             else:
                 # No bonus roll, advance turn
                 self.game_state.advance_turn()
-                self.waiting_for_peg_selection = False
+            self.waiting_for_peg_selection = False
         except (KeyError, AttributeError) as e:
             print(f"Error finishing move animation: {e}")
             self.game_state.is_animating_move = False
@@ -352,7 +344,6 @@ class TroubleGame:
         if exit_button_rect.collidepoint(mouse_x, mouse_y):
             pygame.quit()
             exit()
-            return
     
     def handle_rules_click(self, mouse_pos):
         """Handle clicks on the rules screen"""
@@ -406,52 +397,21 @@ Contains all game rules, state management, and business logic
 
 
 class Player:
-    """Represents a player in the game"""
-
     def __init__(self, color: str, name: str):
         self.color = color
         self.name = name
         self.pegs: List["Peg"] = []
 
-    def get_pegs_in_home(self) -> List["Peg"]:
-        """Return all pegs currently in home base"""
-        return [peg for peg in self.pegs if peg.is_in_home]
-
-    def get_pegs_on_track(self) -> List["Peg"]:
-        """Return all pegs currently on the playing track"""
-        return [peg for peg in self.pegs if not peg.is_in_home and not peg.is_in_finish]
-
-    def get_pegs_in_finish(self) -> List["Peg"]:
-        """Return all pegs currently in the finish zone"""
-        return [peg for peg in self.pegs if peg.is_in_finish]
-
-    def has_won(self) -> bool:
-        """Check if this player has won the game"""
-        return len(self.get_pegs_in_finish()) == 4
-
-
 class Peg:
-    """Represents a game piece belonging to a player"""
+    """Represents a game piece"""
 
     def __init__(self, owner: Player):
         self.owner = owner
         self.position = -1  # -1 = home, 0-27 = track, 100+ = finish
-        self.is_in_home = True
-        self.is_in_finish = False
 
     def move_to(self, position: int):
         """Move this peg to a new position"""
         self.position = position
-
-        if position == -1:
-            self.is_in_home = True
-            self.is_in_finish = False
-        elif position >= 100:
-            self.is_in_home = False
-            self.is_in_finish = True
-        else:
-            self.is_in_home = False
-            self.is_in_finish = False
 
     def send_home(self):
         """Send this peg back to home base"""
@@ -485,7 +445,7 @@ class GameState:
         self.last_roll: Optional[int] = None
         
         self.is_animating_move = False
-        self.move_animation = None # {peg, start_pos, end_pos, start_time, duration}
+        self.move_animation = None
 
     def initialize_game(self, num_players: int):
         """Initialize a new game with the specified number of players"""
@@ -532,10 +492,10 @@ class GameState:
         """Get all pegs that can be moved with the current roll"""
         current_player = self.get_current_player()
         valid_pegs = []
-
+        pegs_in_home = [peg for peg in current_player.pegs if peg.position == -1]
         if roll == 1:
             # Roll of 1: must move a peg from home to start
-            pegs_in_home = current_player.get_pegs_in_home()
+            
             start_pos = self.START_POSITIONS[current_player.color]
 
             # Check if start position is blocked by own peg
@@ -550,7 +510,6 @@ class GameState:
 
         elif roll == 6:
             # Roll of 6: can move from home OR move a peg on track
-            pegs_in_home = current_player.get_pegs_in_home()
             start_pos = self.START_POSITIONS[current_player.color]
 
             # Check if we can move from home
@@ -561,16 +520,9 @@ class GameState:
                 ):
                     valid_pegs.extend(pegs_in_home)
 
-            # Also check pegs on track
-            pegs_on_track = current_player.get_pegs_on_track()
-            for peg in pegs_on_track:
-                new_pos = self._calculate_new_position(peg, roll)
-                if new_pos is not None and self._is_valid_destination(peg, new_pos):
-                    valid_pegs.append(peg)
-
-        else:
-            # Rolls 2-5: can only move pegs on track
-            pegs_on_track = current_player.get_pegs_on_track()
+        # For rolls 2-6, check pegs on track
+        if roll >= 2:
+            pegs_on_track = [peg for peg in current_player.pegs if 0 <= peg.position < 100]
             for peg in pegs_on_track:
                 new_pos = self._calculate_new_position(peg, roll)
                 if new_pos is not None and self._is_valid_destination(peg, new_pos):
@@ -583,13 +535,13 @@ class GameState:
         current_player = peg.owner
 
         # If peg is in home and roll is 1 or 6, move to start
-        if peg.is_in_home:
+        if peg.position == -1:
             if roll == 1 or roll == 6:
                 return self.START_POSITIONS[current_player.color]
             return None
 
         # If peg is in finish zone, try to advance within finish
-        if peg.is_in_finish:
+        if peg.position >= 100:
             finish_index = peg.position - 100
             new_finish_index = finish_index + roll
             if new_finish_index < 4:
@@ -633,14 +585,14 @@ class GameState:
         current_player = peg.owner
         
         # Handle move from home
-        if peg.is_in_home:
+        if peg.position == -1:
             if roll == 1 or roll == 6:
                 start_pos = self.START_POSITIONS[current_player.color]
                 path.append(start_pos)
             return path
             
         # Handle move from finish (shouldn't happen usually)
-        if peg.is_in_finish:
+        if peg.position >= 100:
             return path
             
         # Handle track movement
@@ -648,56 +600,19 @@ class GameState:
         finish_entry = self.FINISH_ENTRY_POSITIONS[current_player.color]
         
         while steps_remaining > 0:
-            # Check if entering finish
-            # Logic similar to _calculate_new_position but step by step
-            
-            # Check if we are at finish entry and moving into finish
             if current_pos == finish_entry:
-                 # Enter finish zone
-                 # Find first available finish spot or just increment
-                 # For animation, we can just show moving into 100, 101, etc.
-                 # But we need to know which specific finish spot we end up in?
-                 # Actually, let's just simulate the steps.
-                 
-                 # If we are at finish entry, next step is 100 (first finish spot)
-                 # But wait, finish spots are 100, 101, 102, 103.
-                 # If we are at entry, next is 100.
-                 # If we are at 100, next is 101.
-                 
-                 # Let's simplify: if current is finish entry, next is 100.
-                 # If current >= 100, next is current + 1.
-                 
-                 next_pos = 100
-                 path.append(next_pos)
-                 current_pos = next_pos
-                 steps_remaining -= 1
-                 continue
-            
-            if current_pos >= 100:
+                # Enter finish zone
+                next_pos = 100
+            elif current_pos >= 100:
+                # Move within finish zone
                 next_pos = current_pos + 1
-                path.append(next_pos)
-                current_pos = next_pos
-                steps_remaining -= 1
-                continue
-
-            # Normal track move
-            next_pos = (current_pos + 1) % 28
-            
-            # Check if we just passed finish entry (and should have entered)
-            # This is tricky step-by-step.
-            # If we are at finish entry, we should go to 100, NOT (finish_entry + 1) % 28
-            # UNLESS we are not the owner of that finish entry?
-            # No, finish entry is specific to color.
-            
-            # So:
-            if current_pos == finish_entry:
-                 # We already handled this above?
-                 # Yes, if current_pos == finish_entry, we go to 100.
-                 pass
             else:
-                path.append(next_pos)
-                current_pos = next_pos
-                steps_remaining -= 1
+                # Normal track move
+                next_pos = (current_pos + 1) % 28
+            
+            path.append(next_pos)
+            current_pos = next_pos
+            steps_remaining -= 1
                 
         return path
 
@@ -708,11 +623,6 @@ class GameState:
             occupying_peg = self.board_occupancy[new_pos]
             if occupying_peg.owner == peg.owner:
                 return False
-
-        # Finish zone positions (100+) are always valid if calculated
-        if new_pos >= 100:
-            return True
-
         return True
 
     def move_peg(self, peg: Peg, roll: int) -> dict:
@@ -732,9 +642,8 @@ class GameState:
             return result
 
         # Remove peg from old position in board occupancy
-        if peg.position >= 0 and peg.position < 100:
-            if peg.position in self.board_occupancy:
-                del self.board_occupancy[peg.position]
+        if 0 <= peg.position < 100 and peg.position in self.board_occupancy:
+            del self.board_occupancy[peg.position]
 
         # Check for capture before moving (only on track positions)
         if new_pos >= 0 and new_pos < 100:
@@ -806,18 +715,12 @@ class GameState:
     def check_win_condition(self):
         """Check if any player has won the game"""
         for player in self.players:
-            if player.has_won():
+            if len([peg for peg in player.pegs if peg.position >= 100]) == 4:
                 self.game_over = True
                 self.winner = player
                 self.message = f"{player.name} wins!"
                 self.save_game_results()
                 return
-
-    def has_valid_moves(self) -> bool:
-        """Check if the current player has any valid moves for the current roll"""
-        if self.current_roll is None:
-            return False
-        return len(self.get_valid_pegs(self.current_roll)) > 0
 
     def get_current_player(self) -> Player:
         """Get the current player"""
@@ -834,7 +737,7 @@ class GameState:
             # Calculate player rankings based on pegs in finish zone
             rankings = []
             for player in self.players:
-                pegs_finished = len(player.get_pegs_in_finish())
+                pegs_finished = len([peg for peg in player.pegs if peg.position >= 100])
                 rankings.append((player.color, pegs_finished))
             
             # Sort by pegs finished (descending)
@@ -898,10 +801,7 @@ class GameRenderer:
 
     def render_all(self, game_state: GameState, setup_mode: bool = False, mouse_pos: Tuple[int, int] = (0, 0)):
         # Render the complete game state
-        # Draw background gradient (simulated with rects for performance or just solid color)
         self.screen.fill(COLORS["BOARD_BG"])
-        
-        # Subtle background pattern or vignette could go here
         
         if setup_mode:
             self.render_setup_screen(mouse_pos)
@@ -924,8 +824,7 @@ class GameRenderer:
             self.render_pause_button(mouse_pos)
 
     def _calculate_space_positions(self):
-        # Calculate and cache positions for all board spaces
-        # Calculate positions for 28 track spaces in a circle
+        # Calculate and cache positions for 28 track spaces in a circle
         for i in range(28):
             angle = (i / 28) * 2 * math.pi - math.pi / 2  # Start at top
             x = self.board_center[0] + int(self.track_radius * math.cos(angle))
@@ -939,10 +838,8 @@ class GameRenderer:
         pygame.gfxdraw.filled_circle(surface, x, y, radius, color)
         
         if border_color and border_width > 0:
-            # Draw border (simulated by drawing a slightly larger circle behind or multiple circles)
-            # For simple AA border, we can just draw an AA circle outline
             for i in range(border_width):
-                 pygame.gfxdraw.aacircle(surface, x, y, radius - i, border_color)
+                pygame.gfxdraw.aacircle(surface, x, y, radius - i, border_color)
 
     def _draw_shadow(self, surface, center, radius, offset=(5, 5), alpha=100):
         # Draw a drop shadow
@@ -969,15 +866,8 @@ class GameRenderer:
 
     def render_center_dice(self, game_state: GameState):
         # Render the dice in the center of the board
-        # Determine what value to show
-        dice_value = None
-        if game_state.is_rolling:
-            dice_value = game_state.current_animation_value
-        elif game_state.current_roll is not None:
-            dice_value = game_state.current_roll
-        elif game_state.last_roll is not None:
-            dice_value = game_state.last_roll
-            
+        dice_value = (game_state.current_animation_value if game_state.is_rolling 
+                     else game_state.current_roll or game_state.last_roll)
         if dice_value is None:
             return
 
@@ -1070,27 +960,19 @@ class GameRenderer:
                     self._draw_circle_antialiased(self.screen, COLORS[player.color], (x, y), 12)
                     pygame.gfxdraw.aacircle(self.screen, int(x), int(y), 12, COLORS["WHITE"])
 
-    def get_screen_position_for_index(self, index: int) -> Tuple[int, int]:
-        # Get screen position for a track index (0-27)
-        if index in self.space_positions:
-            return self.space_positions[index]
-        return (0, 0)
-
     def get_peg_screen_position(self, peg: Peg) -> Tuple[int, int]:
         # Get the screen coordinates for a peg
-        # Home base positions
         home_positions = {"RED": (150, 150), "BLUE": (1050, 150), "GREEN": (1050, 750), "YELLOW": (150, 750)}
-        # Finish zone positions
-
-        if peg.is_in_home:
+        
+        if peg.position == -1:
             # Position in home base (2x2 grid)
             base_x, base_y = home_positions[peg.owner.color]
-            pegs_in_home = peg.owner.get_pegs_in_home()
+            pegs_in_home = [p for p in peg.owner.pegs if p.position == -1]
             index = pegs_in_home.index(peg) if peg in pegs_in_home else 0
             x = base_x - 30 + (index % 2) * 60
             y = base_y - 30 + (index // 2) * 60
             return (x, y)
-        elif peg.is_in_finish:
+        elif peg.position >= 100:
             # Position in finish zone
             start_x, start_y = finish_positions[peg.owner.color]
             dx, dy = finish_directions[peg.owner.color]
@@ -1166,16 +1048,12 @@ class GameRenderer:
         # Get screen coordinate for a logical position
         # Temporarily set peg position to get coordinate, then restore
         old_pos = peg.position
-        old_home = peg.is_in_home
-        old_finish = peg.is_in_finish
         
         peg.move_to(pos)
         coord = self.get_peg_screen_position(peg)
         
         # Restore
         peg.position = old_pos
-        peg.is_in_home = old_home
-        peg.is_in_finish = old_finish
         return coord
 
     def render_dice_button(self, enabled: bool, current_roll: Optional[int], mouse_pos: Tuple[int, int]):
@@ -1326,8 +1204,6 @@ class GameRenderer:
 
     def render_main_menu(self, mouse_pos: Tuple[int, int]):
         # Render the main menu screen
-        import os
-        
         # Background
         self.screen.fill(COLORS["BOARD_BG"])
         
@@ -1469,7 +1345,7 @@ class GameRenderer:
         self.screen.blit(back_text, back_text_rect)
 
     def highlight_pegs(self, pegs: List[Peg]):
-        #Highlight valid pegs for selection
+        # Highlight valid pegs for selection
         for peg in pegs:
             x, y = self.get_peg_screen_position(peg)
 
@@ -1496,17 +1372,10 @@ class GameRenderer:
 
     def is_dice_button_clicked(self, mouse_pos: Tuple[int, int]) -> bool:
         # Check if the dice button was clicked
-        mouse_x, mouse_y = mouse_pos
-
-        button_x = 600
-        button_y = 800
-        button_width = 180
-        button_height = 70
-
-        # Check if mouse is within button bounds
-        if (button_x - button_width // 2 <= mouse_x <= button_x + button_width // 2 and button_y - button_height // 2 <= mouse_y <= button_y + button_height // 2):
-            return True
-        return False
+        button_x, button_y = 600, 800
+        button_width, button_height = 180, 70
+        rect = pygame.Rect(button_x - button_width // 2, button_y - button_height // 2, button_width, button_height)
+        return rect.collidepoint(mouse_pos)
     
     def is_menu_button_clicked(self, mouse_pos: Tuple[int, int]) -> bool:
         # Check if the back to menu button was clicked on game over screen
